@@ -20,6 +20,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spi.h"
+#include "tim.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -28,7 +31,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#define TEST_CONFIG 1
+#define TEST_STATIC_LENGTH 1
+#define TEST_DYNAMIC_LENGTH 1
+#define	TESTS_ACK_PAYLOAD 1
 
+#define TEST_TRANSMIT 1
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -41,19 +49,27 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-SPI_HandleTypeDef hspi1;
-
-TIM_HandleTypeDef htim1;
 
 /* USER CODE BEGIN PV */
+uint32_t testCounter = 0;
+uint32_t regTmp = 0;
 
+static uint8_t rxPayloadWidthPipe0 = 0;
+uint8_t rxFifoStatus = 0;
+uint8_t txFifoStatus = 0;
+
+uint8_t TransmitAddress[TAB_SIZE] = { 'A', 'B', 'A', 'B', 'A' };
+uint8_t ReceiveAddress[TAB_SIZE] = { 'C', 'D', 'C', 'D', 'C' };
+
+uint8_t ReceiveData[BUF_SIZE];
+uint8_t TransmitData[BUF_SIZE];
+
+uint8_t readBuf[TAB_SIZE];
+uint8_t writeBuf[TAB_SIZE] = { 'A', 'B', 'C', 'D', 'E' };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_TIM1_Init(void);
-static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -95,17 +111,75 @@ int main(void)
   MX_TIM1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-
+	HAL_TIM_Base_Start(&htim1);
   /* USER CODE END 2 */
  
  
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+#if  TEST_CONFIG
+	/* 0. Create pointer and init structure. */
+	nrfStruct_t *testStruct;						// create pointer to struct
+	testStruct = nRF_Init(&hspi1, &htim1, CSN_GPIO_Port, CSN_Pin, CE_GPIO_Port,
+	CE_Pin);	// create struct
+	regTmp = readReg(testStruct, CONFIG); 		// read value of CONFIG register
 
+	/* 1.1  Set role as RX */
+	modeRX(testStruct);
+	/* 1.2 Enable CRC and set coding */
+	enableCRC(testStruct);
+	setCRC(testStruct, CRC_16_bits);
+	/* 1.3 Enable/disable interrupts */
+	enableRXinterrupt(testStruct);
+	enableTXinterrupt(testStruct);
+
+	/* 2. Set ACK for RX pipe  */
+	enableAutoAckPipe(testStruct, 0);
+	/* 3. Set RX pipe */
+	enableRxAddr(testStruct, 0);
+	/* 4. Set RX/TX address width */
+	setAddrWidth(testStruct, longWidth);
+	/* 5. Set ARD and ARC */
+	setAutoRetrCount(testStruct, 3);
+	setAutoRetrDelay(testStruct, 1); //500us
+	/* 6. Set RF channel */
+	setChannel(testStruct, 64);
+	/* 7. Set RF power and Data Rate */
+	setRFpower(testStruct, RF_PWR_0dBm);
+	setDataRate(testStruct, RF_DataRate_250);
+	/* 8 Set RX address */
+	setReceivePipeAddress(testStruct, 0, ReceiveAddress,
+			sizeof(ReceiveAddress));
+	/* 9. Set TX address */
+	setTransmitPipeAddress(testStruct, TransmitAddress,
+			sizeof(TransmitAddress));
+#if TEST_STATIC_LENGTH
+	setRxPayloadWidth(testStruct, 0, 32);
+#endif
+#if TEST_DYNAMIC_LENGTH
+	enableDynamicPayloadLength(testStruct);
+	enableDynamicPayloadLengthPipe(testStruct, 0);
+#endif
+#if TESTS_ACK_PAYLOAD
+	enableAckPayload(testStruct);
+	writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData));
+#endif
+#endif
+	while (1) {
+		/* USER CODE END WHILE */
+#if TEST_TRANSMIT
+		if (1/*checkReceivedPayload(testStruct) */) {
+			rxPayloadWidthPipe0 = readDynamicPayloadWidth(testStruct);
+			readRxPayload(testStruct, ReceiveData, sizeof(ReceiveData)); //Read received data
+			rxFifoStatus = getRxStatusFIFO(testStruct);
+			txFifoStatus = getTxStatusFIFO(testStruct);
+			flushTx(testStruct);								//Clear TX FIFO
+			txFifoStatus = getTxStatusFIFO(testStruct);
+			writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData));//Write new ACK payload
+			txFifoStatus = getTxStatusFIFO(testStruct);
+		}
+#endif
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -129,7 +203,12 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -138,134 +217,15 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
-
-/**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 71;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0xFFFE;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : CSN_Pin */
-  GPIO_InitStruct.Pin = CSN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CSN_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : CE_Pin */
-  GPIO_InitStruct.Pin = CE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CE_GPIO_Port, &GPIO_InitStruct);
-
 }
 
 /* USER CODE BEGIN 4 */
