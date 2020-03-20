@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "settingModule.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,6 +37,9 @@
 #define	TESTS_ACK_PAYLOAD 1
 
 #define TEST_TRANSMIT 1
+
+#define TAB_SIZE 5
+#define BUF_SIZE 32
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -58,8 +61,8 @@ static uint8_t rxPayloadWidthPipe0 = 0;
 uint8_t rxFifoStatus = 0;
 uint8_t txFifoStatus = 0;
 
-uint8_t TransmitAddress[TAB_SIZE] = { 'A', 'B', 'A', 'B', 'A' };
-uint8_t ReceiveAddress[TAB_SIZE] = { 'C', 'D', 'C', 'D', 'C' };
+uint8_t TransmitAddress[TAB_SIZE] = { 'C', 'D', 'C', 'D', 'C' };
+uint8_t ReceiveAddress[TAB_SIZE] = { 'A', 'B', 'A', 'B', 'A' };
 
 uint8_t ReceiveData[BUF_SIZE];
 uint8_t TransmitData[BUF_SIZE];
@@ -118,6 +121,12 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	uint8_t j;
+	for (j = 0; j < BUF_SIZE; j++) {
+		TransmitData[j] = j;
+	}
+
+
 #if  TEST_CONFIG
 	/* 0. Create pointer and init structure. */
 	nrfStruct_t *testStruct;						// create pointer to struct
@@ -126,7 +135,7 @@ int main(void)
 	regTmp = readReg(testStruct, CONFIG); 		// read value of CONFIG register
 
 	/* 1.1  Set role as RX */
-	modeRX(testStruct);
+	modeTX(testStruct);
 	/* 1.2 Enable CRC and set coding */
 	enableCRC(testStruct);
 	setCRC(testStruct, CRC_16_bits);
@@ -163,23 +172,17 @@ int main(void)
 #endif
 #if TESTS_ACK_PAYLOAD
 	enableAckPayload(testStruct);
-	writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData));
+//	writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData)); //not use in TX mode
 #endif
 #endif
 	while (1) {
-		/* USER CODE END WHILE */
-#if TEST_TRANSMIT
-		if (1/*checkReceivedPayload(testStruct) */) {
+    /* USER CODE END WHILE */
+		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
+		if (checkReceivedPayload(testStruct)) {
 			rxPayloadWidthPipe0 = readDynamicPayloadWidth(testStruct);
-			readRxPayload(testStruct, ReceiveData, sizeof(ReceiveData)); //Read received data
-			rxFifoStatus = getRxStatusFIFO(testStruct);
-			txFifoStatus = getTxStatusFIFO(testStruct);
-			flushTx(testStruct);								//Clear TX FIFO
-			txFifoStatus = getTxStatusFIFO(testStruct);
-			writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData));//Write new ACK payload
-			txFifoStatus = getTxStatusFIFO(testStruct);
-		}
-#endif
+			readRxPayload(testStruct, readBuf, rxPayloadWidthPipe0);
+			}
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
