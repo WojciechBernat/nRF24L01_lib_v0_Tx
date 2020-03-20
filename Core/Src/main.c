@@ -178,11 +178,14 @@ int main(void)
 	while (1) {
     /* USER CODE END WHILE */
 		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
+		rxFifoStatus = getRxStatusFIFO(testStruct);
+		txFifoStatus = getTxStatusFIFO(testStruct);
 		if (checkReceivedPayload(testStruct)) {
 			rxPayloadWidthPipe0 = readDynamicPayloadWidth(testStruct);
 			readRxPayload(testStruct, readBuf, rxPayloadWidthPipe0);
 			}
-
+		rxFifoStatus = getRxStatusFIFO(testStruct);
+		txFifoStatus = getTxStatusFIFO(testStruct);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
