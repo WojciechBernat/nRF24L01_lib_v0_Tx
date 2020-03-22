@@ -179,7 +179,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
 		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
-		HAL_Delay(1);
+		HAL_Delay(100);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
 		if (getStatusFullTxFIFO(testStruct)) {
 			flushTx(testStruct);
