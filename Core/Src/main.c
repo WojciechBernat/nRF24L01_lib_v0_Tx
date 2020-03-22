@@ -36,7 +36,7 @@
 #define TEST_DYNAMIC_LENGTH 1
 #define	TESTS_ACK_PAYLOAD 1
 
-#define TEST_TRANSMIT 1
+#define TEST_TRANSMIT 0
 
 #define TAB_SIZE 5
 #define BUF_SIZE 32
@@ -61,7 +61,7 @@ static uint8_t rxPayloadWidthPipe0 = 0;
 uint8_t rxFifoStatus = 0;
 uint8_t txFifoStatus = 0;
 
-uint8_t TransmitAddress[TAB_SIZE] = { 'C', 'D', 'C', 'D', 'C' };
+uint8_t TransmitAddress[TAB_SIZE] = { 'A', 'B', 'A', 'B', 'A' };
 uint8_t ReceiveAddress[TAB_SIZE] = { 'A', 'B', 'A', 'B', 'A' };
 
 uint8_t ReceiveData[BUF_SIZE];
@@ -89,7 +89,10 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	uint8_t j;
+	for (j = 0; j < BUF_SIZE; j++) {
+		TransmitData[j] = j;
+	}
   /* USER CODE END 1 */
   
 
@@ -121,12 +124,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	uint8_t j;
-	for (j = 0; j < BUF_SIZE; j++) {
-		TransmitData[j] = j;
-	}
-
-
 #if  TEST_CONFIG
 	/* 0. Create pointer and init structure. */
 	nrfStruct_t *testStruct;						// create pointer to struct
@@ -136,13 +133,14 @@ int main(void)
 
 	/* 1.1  Set role as RX */
 	modeTX(testStruct);
+	regTmp = readReg(testStruct, CONFIG); 		// read value of CONFIG register
 	/* 1.2 Enable CRC and set coding */
 	enableCRC(testStruct);
 	setCRC(testStruct, CRC_16_bits);
 	/* 1.3 Enable/disable interrupts */
 	enableRXinterrupt(testStruct);
 	enableTXinterrupt(testStruct);
-
+	regTmp = readReg(testStruct, CONFIG); 		// read value of CONFIG register
 	/* 2. Set ACK for RX pipe  */
 	enableAutoAckPipe(testStruct, 0);
 	/* 3. Set RX pipe */
@@ -150,12 +148,12 @@ int main(void)
 	/* 4. Set RX/TX address width */
 	setAddrWidth(testStruct, longWidth);
 	/* 5. Set ARD and ARC */
-	setAutoRetrCount(testStruct, 3);
-	setAutoRetrDelay(testStruct, 1); //500us
+	setAutoRetrCount(testStruct, 4);
+	setAutoRetrDelay(testStruct, 3); //500us
 	/* 6. Set RF channel */
-	setChannel(testStruct, 64);
+	setChannel(testStruct, 2);
 	/* 7. Set RF power and Data Rate */
-	setRFpower(testStruct, RF_PWR_0dBm);
+	setRFpower(testStruct, RF_PWR_6dBm);
 	setDataRate(testStruct, RF_DataRate_250);
 	/* 8 Set RX address */
 	setReceivePipeAddress(testStruct, 0, ReceiveAddress,
@@ -177,17 +175,36 @@ int main(void)
 #endif
 	while (1) {
     /* USER CODE END WHILE */
-		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
-		rxFifoStatus = getRxStatusFIFO(testStruct);
-		txFifoStatus = getTxStatusFIFO(testStruct);
-		if (checkReceivedPayload(testStruct)) {
-			rxPayloadWidthPipe0 = readDynamicPayloadWidth(testStruct);
-			readRxPayload(testStruct, readBuf, rxPayloadWidthPipe0);
-			}
-		rxFifoStatus = getRxStatusFIFO(testStruct);
-		txFifoStatus = getTxStatusFIFO(testStruct);
+
     /* USER CODE BEGIN 3 */
-  }
+		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
+		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
+		HAL_Delay(1);
+		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
+		if (getStatusFullTxFIFO(testStruct)) {
+			flushTx(testStruct);
+		}
+#if TEST_TRANSMIT
+		rxFifoStatus = getRxStatusFIFO(testStruct);
+		txFifoStatus = getTxStatusFIFO(testStruct);
+		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
+		if (checkReceivedPayload(testStruct)) {
+			HAL_GPIO_WritePin(RX_LED_GPIO_Port, RX_LED_Pin, GPIO_PIN_SET);
+			rxFifoStatus = getRxStatusFIFO(testStruct);
+			rxPayloadWidthPipe0 = readDynamicPayloadWidth(testStruct);
+			readRxPayload(testStruct, ReceiveData, sizeof(ReceiveData));
+			rxFifoStatus = getRxStatusFIFO(testStruct);
+			HAL_GPIO_WritePin(RX_LED_GPIO_Port, RX_LED_Pin, GPIO_PIN_RESET);
+			HAL_Delay(1);
+		}
+		txFifoStatus = getTxStatusFIFO(testStruct);
+		if (getStatusFullTxFIFO(testStruct)) {
+			flushTx(testStruct);
+		}
+		txFifoStatus = getTxStatusFIFO(testStruct);
+#endif
+	}
+
   /* USER CODE END 3 */
 }
 

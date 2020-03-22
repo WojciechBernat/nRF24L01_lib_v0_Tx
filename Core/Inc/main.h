@@ -60,8 +60,15 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define CSN_Pin GPIO_PIN_4
 #define CSN_GPIO_Port GPIOA
+
 #define CE_Pin GPIO_PIN_4
 #define CE_GPIO_Port GPIOC
+
+#define TX_LED_Pin GPIO_PIN_12
+#define TX_LED_GPIO_Port GPIOD
+
+#define RX_LED_Pin GPIO_PIN_13
+#define RX_LED_GPIO_Port GPIOD
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

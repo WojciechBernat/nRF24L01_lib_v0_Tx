@@ -1,6 +1,7 @@
 #include "settingModule.h"
 #include "highLevelModule.h"
 
+extern uint8_t regTmp;
 uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct) {
 	if (getPipeStatusRxFIFO(nrfStruct) == RX_FIFO_MASK_DATA)
 		return 1;
@@ -43,20 +44,23 @@ void modeTX(nrfStruct_t *nrfStruct)
 		pwrUp(nrfStruct);
 		delayUs(nrfStruct, 1500);	//wait 1.5ms fo nRF24L01+ stand up
 	}
+	regTmp = readReg(nrfStruct, CONFIG); 		// read value of CONFIG register
 	flushRx(nrfStruct);			//clear (flush) RX FIFO buffer
+	regTmp = readReg(nrfStruct, CONFIG); 		// read value of CONFIG register
 	if (getRxStatusFIFO(nrfStruct) == RX_FIFO_EMPTY) {
 		flushTx(nrfStruct);		//clear (flush) TX FIFO buffer
 		if (getTxStatusFIFO(nrfStruct) == TX_FIFO_MASK_EMPTY) {
 			uint8_t tmp = 1;	//variable for test
 		}
 	}
-
+	regTmp = readReg(nrfStruct, CONFIG); 		// read value of CONFIG register
 	clearRX_DR(nrfStruct);	//clear interrupts flags
 	clearTX_DS(nrfStruct);
 	clearMAX_RT(nrfStruct);
-
+	regTmp = readReg(nrfStruct, CONFIG); 		// read value of CONFIG register
 	ceHigh(nrfStruct);
 	resetBit(nrfStruct, CONFIG, bit0);
+	regTmp = readReg(nrfStruct, CONFIG); 		// read value of CONFIG register
 }
 
 /**
