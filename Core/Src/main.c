@@ -176,16 +176,11 @@ int main(void)
 	enableAckPayload(testStruct);
 //	writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData)); //not use in TX mode
 #endif
-	regTmp = readReg(testStruct, RF_SETUP);
-	enableContCarrier(testStruct);
-	enableLockPLL(testStruct);
-	regTmp = readReg(testStruct, RF_SETUP);
 #endif
 	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		/*
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
 		writeTxPayload(testStruct, TransmitData, BUF_SIZE);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
@@ -194,7 +189,7 @@ int main(void)
 			for (j = 0; j < BUF_SIZE; j++) {
 				TransmitData[j] = 'A' + j;
 			}
-		 }*/
+		}
 #if TEST_TRANSMIT
 		rxFifoStatus = getRxStatusFIFO(testStruct);
 		txFifoStatus = getTxStatusFIFO(testStruct);
