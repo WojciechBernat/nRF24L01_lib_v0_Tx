@@ -33,13 +33,13 @@
 /* USER CODE BEGIN PTD */
 #define TEST_CONFIG 1
 #define TEST_STATIC_LENGTH 1
-#define TEST_DYNAMIC_LENGTH 1
-#define	TESTS_ACK_PAYLOAD 1
+#define TEST_DYNAMIC_LENGTH 0
+#define	TESTS_ACK_PAYLOAD 0
 
 #define TEST_TRANSMIT 0
 
 #define TAB_SIZE 5
-#define BUF_SIZE 32
+#define BUF_SIZE 10
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -66,9 +66,6 @@ uint8_t ReceiveAddress[TAB_SIZE] = { 'A', 'B', 'A', 'B', 'A' };
 
 uint8_t ReceiveData[BUF_SIZE];
 uint8_t TransmitData[BUF_SIZE];
-
-uint8_t readBuf[TAB_SIZE];
-uint8_t writeBuf[TAB_SIZE] = { 'A', 'B', 'C', 'D', 'E' };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,11 +88,9 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	uint8_t j;
 	for (j = 0; j < BUF_SIZE; j++) {
-		TransmitData[j] = j;
+		TransmitData[j] = 'A' + j;
 	}
   /* USER CODE END 1 */
-  
-
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -143,26 +138,35 @@ int main(void)
 	regTmp = readReg(testStruct, CONFIG); 		// read value of CONFIG register
 	/* 2. Set ACK for RX pipe  */
 	enableAutoAckPipe(testStruct, 0);
+	regTmp = readReg(testStruct, EN_AA);
 	/* 3. Set RX pipe */
 	enableRxAddr(testStruct, 0);
+	regTmp = readReg(testStruct, EN_RXADDR);
 	/* 4. Set RX/TX address width */
 	setAddrWidth(testStruct, longWidth);
+	regTmp = readReg(testStruct, SETUP_AW);
 	/* 5. Set ARD and ARC */
 	setAutoRetrCount(testStruct, 4);
 	setAutoRetrDelay(testStruct, 3); //500us
+	regTmp = readReg(testStruct, SETUP_RETR);
 	/* 6. Set RF channel */
 	setChannel(testStruct, 2);
+	regTmp = readReg(testStruct, RF_CH);
 	/* 7. Set RF power and Data Rate */
 	setRFpower(testStruct, RF_PWR_6dBm);
 	setDataRate(testStruct, RF_DataRate_250);
+	regTmp = readReg(testStruct, RF_SETUP);
 	/* 8 Set RX address */
 	setReceivePipeAddress(testStruct, 0, ReceiveAddress,
 			sizeof(ReceiveAddress));
+	readRegExt(testStruct, RX_ADDR_P0, ReceiveData, 5);
 	/* 9. Set TX address */
 	setTransmitPipeAddress(testStruct, TransmitAddress,
 			sizeof(TransmitAddress));
+	readRegExt(testStruct, TX_ADDR, ReceiveData, 5);
 #if TEST_STATIC_LENGTH
-	setRxPayloadWidth(testStruct, 0, 32);
+	setRxPayloadWidth(testStruct, 0, BUF_SIZE);
+	regTmp = readReg(testStruct, RX_PW_P0);
 #endif
 #if TEST_DYNAMIC_LENGTH
 	enableDynamicPayloadLength(testStruct);
@@ -172,18 +176,25 @@ int main(void)
 	enableAckPayload(testStruct);
 //	writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData)); //not use in TX mode
 #endif
+	regTmp = readReg(testStruct, RF_SETUP);
+	enableContCarrier(testStruct);
+	enableLockPLL(testStruct);
+	regTmp = readReg(testStruct, RF_SETUP);
 #endif
 	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		/*
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
-		writeTxPayload(testStruct, TransmitData, sizeof(TransmitData));
-		HAL_Delay(100);
+		writeTxPayload(testStruct, TransmitData, BUF_SIZE);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
 		if (getStatusFullTxFIFO(testStruct)) {
 			flushTx(testStruct);
-		}
+			for (j = 0; j < BUF_SIZE; j++) {
+				TransmitData[j] = 'A' + j;
+			}
+		 }*/
 #if TEST_TRANSMIT
 		rxFifoStatus = getRxStatusFIFO(testStruct);
 		txFifoStatus = getTxStatusFIFO(testStruct);
