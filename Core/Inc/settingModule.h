@@ -1,7 +1,7 @@
 
 #include "highLevelModule.h"
-
-uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct);
+uint8_t sendPayload(nrfStruct_t *nrfStruct, uint8_t *buf, size_t bufSize);
+uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct, uint8_t pip);
 /* Modes */
 void modeRX(nrfStruct_t *nrfStruct);
 void modeTX(nrfStruct_t *nrfStruct);

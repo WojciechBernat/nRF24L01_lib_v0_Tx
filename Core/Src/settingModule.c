@@ -1,10 +1,23 @@
 #include "settingModule.h"
 #include "highLevelModule.h"
 
-extern uint8_t regTmp;
+uint8_t sendPayload(nrfStruct_t *nrfStruct, uint8_t *buf, size_t bufSize) {
+	clearTX_DS(nrfStruct);
+	clearMAX_RT(nrfStruct);
+	writeTxPayload(nrfStruct, buf, bufSize);
+	if (!HAL_GPIO_ReadPin(CE_GPIO_Port, CE_Pin)) {
+		ceHigh(nrfStruct);
+	}
+	__HAL_TIM_SET_COUNTER((nrfStruct->nRFtim), 0);		//set 0 for counter
+	while (__HAL_TIM_GET_COUNTER(nrfStruct->nRFtim) > RX_TX_SETTING_TIME + 10) {//check interrupt's flag
+		if (readBit(nrfStruct, STATUS, TX_DS)) //if timeout was exceed return 0
+				return OK_CODE;
+	}
+	return 0;
+}
 
-uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct) {
-	if (getPipeStatusRxFIFO(nrfStruct) == RX_FIFO_MASK_DATA)
+uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct, uint8_t pipe) {
+	if (getPipeStatusRxFIFO(nrfStruct) == pipe)
 		return 1;
 	return 0;
 }
@@ -28,6 +41,7 @@ void modeRX(nrfStruct_t *nrfStruct) {
 	//nRF in Standby-I
 	ceHigh(nrfStruct); //set high on CE line
 	setBit(nrfStruct, CONFIG, bit0);
+	delayUs(nrfStruct, RX_TX_SETTING_TIME);
 }
 
 /**
@@ -46,8 +60,9 @@ void modeTX(nrfStruct_t *nrfStruct)
 	clearTX_DS(nrfStruct);
 	clearMAX_RT(nrfStruct);
 
-	ceHigh(nrfStruct);
 	resetBit(nrfStruct, CONFIG, bit0);
+	ceHigh(nrfStruct);
+	delayUs(nrfStruct, RX_TX_SETTING_TIME);
 }
 
 /**

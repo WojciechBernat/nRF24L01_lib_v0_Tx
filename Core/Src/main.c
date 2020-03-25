@@ -54,7 +54,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint32_t testCounter = 0;
+uint32_t sendStatus = 0;
 uint32_t regTmp = 0;
 
 static uint8_t rxPayloadWidthPipe0 = 0;
@@ -153,7 +153,7 @@ int main(void)
 	setChannel(testStruct, 2);
 	regTmp = readReg(testStruct, RF_CH);
 	/* 7. Set RF power and Data Rate */
-	setRFpower(testStruct, RF_PWR_6dBm);
+	setRFpower(testStruct, RF_PWR_0dBm);
 	setDataRate(testStruct, RF_DataRate_250);
 	regTmp = readReg(testStruct, RF_SETUP);
 	/* 8 Set RX address */
@@ -182,7 +182,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
-		writeTxPayload(testStruct, TransmitData, BUF_SIZE);
+		sendStatus = sendPayload(testStruct, TransmitData, BUF_SIZE);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
 		if (getStatusFullTxFIFO(testStruct)) {
 			flushTx(testStruct);
