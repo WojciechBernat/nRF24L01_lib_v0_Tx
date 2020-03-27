@@ -6,7 +6,6 @@ uint8_t sendPayload(nrfStruct_t *nrfStruct, uint8_t *buf, size_t bufSize) {
 
 	if (HAL_GPIO_ReadPin(CSN_GPIO_Port, CSN_Pin)) {
 		ceLow(nrfStruct);
-		//	delayUs(nrfStruct, RX_TX_SETTING_TIME);
 	}
 	if (getStatusFullTxFIFO(nrfStruct)) {
 		flushTx(nrfStruct);
@@ -14,29 +13,15 @@ uint8_t sendPayload(nrfStruct_t *nrfStruct, uint8_t *buf, size_t bufSize) {
 	if (getTX_DS(nrfStruct)) {
 		clearTX_DS(nrfStruct);
 	}
-	writeTxPayload(nrfStruct, buf, bufSize);
-	ceHigh(nrfStruct);
-	delayUs(nrfStruct, 12);
-	ceLow(nrfStruct);
-	txFifoStatus = getTX_DS(nrfStruct);
-	HAL_Delay(5);
-	if (getTX_DS(nrfStruct)) {
-		return OK_CODE;
+	if (writeTxPayload(nrfStruct, buf, bufSize)) {
+		ceHigh(nrfStruct);
+		delayUs(nrfStruct, CE_HIGH_TIME);
+		ceLow(nrfStruct);
+		if (getTX_DS(nrfStruct)) {
+			return OK_CODE;
+		}
 	}
-
-	/*
-	static uint32_t counter = 0;
-	while (!(getTX_DS(nrfStruct))) {
-		if (getMAX_RT(nrfStruct)) {
-			return 0;
-		}
-		if (counter == 32768) {
-			counter = 0;
-			return 0;
-		}
-		counter++;
-	 }*/
-	return OK_CODE;
+	return 0;
 }
 
 uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct, uint8_t pipe) {
