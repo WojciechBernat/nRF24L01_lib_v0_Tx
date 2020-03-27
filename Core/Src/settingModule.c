@@ -3,22 +3,25 @@
 
 uint8_t sendPayload(nrfStruct_t *nrfStruct, uint8_t *buf, size_t bufSize) {
 	clearTX_DS(nrfStruct);
-	clearMAX_RT(nrfStruct);
-	writeTxPayload(nrfStruct, buf, bufSize);
-	if (!HAL_GPIO_ReadPin(CE_GPIO_Port, CE_Pin)) {
-		ceHigh(nrfStruct);
-	}
-	__HAL_TIM_SET_COUNTER((nrfStruct->nRFtim), 0);		//set 0 for counter
-	while (__HAL_TIM_GET_COUNTER(nrfStruct->nRFtim) > RX_TX_SETTING_TIME + 10) {//check interrupt's flag
-		if (readBit(nrfStruct, STATUS, TX_DS)) //if timeout was exceed return 0
-				return OK_CODE;
+	if (writeTxPayload(nrfStruct, buf, bufSize)) {
+		__HAL_TIM_SET_COUNTER((nrfStruct->nRFtim), 0);		//set 0 for counter
+		while (!readBit(nrfStruct, STATUS, TX_DS)) {	//check interrupt's flag
+			if (__HAL_TIM_GET_COUNTER(nrfStruct->nRFtim) > RX_TX_SETTING_TIME) {//if timeout was exceed return 0
+				return 0;
+			}
+		}
+		return OK_CODE;
 	}
 	return 0;
 }
 
 uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct, uint8_t pipe) {
-	if (getPipeStatusRxFIFO(nrfStruct) == pipe)
+	if (getPipeStatusRxFIFO(nrfStruct) == pipe) {
+		if (getRX_DR(nrfStruct)) {
+			clearRX_DR(nrfStruct);
+		}
 		return 1;
+	}
 	return 0;
 }
 
@@ -60,8 +63,8 @@ void modeTX(nrfStruct_t *nrfStruct)
 	clearTX_DS(nrfStruct);
 	clearMAX_RT(nrfStruct);
 
-	resetBit(nrfStruct, CONFIG, bit0);
 	ceHigh(nrfStruct);
+	resetBit(nrfStruct, CONFIG, bit0);
 	delayUs(nrfStruct, RX_TX_SETTING_TIME);
 }
 
@@ -121,6 +124,16 @@ void clearMAX_RT(nrfStruct_t *nrfStruct)
 {
 	setBit(nrfStruct, STATUS, bit4);
 	nrfStruct->statusStruct.maxRetr = 0;
+}
+
+uint8_t getRX_DR(nrfStruct_t *nrfStruct) {
+	nrfStruct->statusStruct.dataReadIrq = readBit(nrfStruct, STATUS, bit6);
+	return (nrfStruct->statusStruct.dataReadIrq);
+}
+
+uint8_t getTX_DS(nrfStruct_t *nrfStruct) {
+	nrfStruct->statusStruct.dataSendIrq = readBit(nrfStruct, STATUS, bit5);
+	return (nrfStruct->statusStruct.dataSendIrq);
 }
 
 /* CRC functions */
@@ -353,6 +366,10 @@ uint8_t retrPacketsCount(nrfStruct_t *nrfStruct)
 	return tmp;
 }
 
+void clearlostPacketsCount(nrfStruct_t *nrfStruct) {
+	uint8_t tmp = readReg(nrfStruct, RF_CH);
+	writeReg(nrfStruct, RF_CH, tmp);
+}
 /* Receive Address data pipe */
 /**
  * @Brief	Write receiver address of pipe

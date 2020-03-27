@@ -1,6 +1,6 @@
 
 #include "highLevelModule.h"
-uint8_t sendPayload(nrfStruct_t *nrfStruct, uint8_t *buf, size_t bufSize);
+
 uint8_t checkReceivedPayload(nrfStruct_t *nrfStruct, uint8_t pip);
 /* Modes */
 void modeRX(nrfStruct_t *nrfStruct);
@@ -19,6 +19,9 @@ void enableRTinterrupt(nrfStruct_t *nrfStruct); //dont mask data retransmition i
 void clearRX_DR(nrfStruct_t *nrfStruct); //clear irt bits in Status Register
 void clearTX_DS(nrfStruct_t *nrfStruct);
 void clearMAX_RT(nrfStruct_t *nrfStruct);
+
+uint8_t getRX_DR(nrfStruct_t *nrfStruct);
+uint8_t getTX_DS(nrfStruct_t *nrfStruct);
 
 /* CRC */
 void enableCRC(nrfStruct_t *nrfStruct);
@@ -53,7 +56,7 @@ void enableLockPLL(nrfStruct_t *nrfStruct);
 void diableLockPLL(nrfStruct_t *nrfStruct);
 
 void setRFpower(nrfStruct_t *nrfStruct, powerRF_t power);
-void setDataRate(nrfStruct_t *nrfStruct, dataRate_t rate); //TODO: to test
+void setDataRate(nrfStruct_t *nrfStruct, dataRate_t rate);
 
 /* Status */
 uint8_t getStatusFullTxFIFO(nrfStruct_t *nrfStruct); //TODO: to tests
@@ -62,7 +65,7 @@ uint8_t getPipeStatusRxFIFO(nrfStruct_t *nrfStruct); //TODO: to tests
 /* Transmit observe */
 uint8_t lostPacketsCount(nrfStruct_t *nrfStruct); //TODO: to tests
 uint8_t retrPacketsCount(nrfStruct_t *nrfStruct); //TODO: to tests
-
+void clearlostPacketsCount(nrfStruct_t *nrfStruct);
 /* RPD - for RF test use only */
 uint8_t checkRPD(nrfStruct_t *nrfStruct);
 
@@ -79,8 +82,8 @@ uint8_t getRxPayloadWidth(nrfStruct_t *nrfStruct, uint8_t pipe);//TODO: to tests
 uint8_t setRxPayloadWidth(nrfStruct_t *nrfStruct, uint8_t pipe, uint8_t width); //TODO: to tests
 
 /* TX and RX FIFO */
-uint8_t getRxStatusFIFO(nrfStruct_t *nrfStruct); //TODO: to tests
-uint8_t getTxStatusFIFO(nrfStruct_t *nrfStruct);  //TODO: to tests
+uint8_t getRxStatusFIFO(nrfStruct_t *nrfStruct);
+uint8_t getTxStatusFIFO(nrfStruct_t *nrfStruct);
 uint8_t getTxReuse(nrfStruct_t *nrfStruct);       //TODO: to tests
 
 /* DYNPD */
