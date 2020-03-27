@@ -33,8 +33,8 @@
 /* USER CODE BEGIN PTD */
 #define TEST_CONFIG 1
 #define TEST_STATIC_LENGTH 1
-#define TEST_DYNAMIC_LENGTH 0
-#define	TESTS_ACK_PAYLOAD 0
+#define TEST_DYNAMIC_LENGTH 1
+#define	TEST_ACK_PAYLOAD 0
 
 #define TEST_TRANSMIT 0
 
@@ -56,6 +56,7 @@
 /* USER CODE BEGIN PV */
 uint32_t sendStatus = 0;
 uint32_t regTmp = 0;
+uint8_t counter = 0;
 
 static uint8_t rxPayloadWidthPipe0 = 0;
 uint8_t rxFifoStatus = 0;
@@ -172,7 +173,7 @@ int main(void)
 	enableDynamicPayloadLength(testStruct);
 	enableDynamicPayloadLengthPipe(testStruct, 0);
 #endif
-#if TESTS_ACK_PAYLOAD
+#if TEST_ACK_PAYLOAD
 	enableAckPayload(testStruct);
 //	writeTxPayloadAck(testStruct, TransmitData, sizeof(TransmitData)); //not use in TX mode
 #endif
@@ -181,15 +182,29 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
-		sendStatus = sendPayload(testStruct, TransmitData, BUF_SIZE);
-		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
-		if (getStatusFullTxFIFO(testStruct)) {
-			flushTx(testStruct);
-			for (j = 0; j < BUF_SIZE; j++) {
-				TransmitData[j] = 'A' + j;
-			}
+
+#if TEST_DYNAMIC_LENGTH
+		if (counter == 31)	//overwrite proctect
+			counter = 0;
+		for (j = 0; j < BUF_SIZE; j++) {	//clean buffer
+			TransmitData[j] = 0;
 		}
+		for (j = 0; j < counter; j++) {		//write content
+			TransmitData[j] = 'A' + j;
+		}
+		TransmitData[counter + 1] = counter + 48;	//write counter
+		counter++;
+
+		HAL_Delay(999);
+		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
+		sendStatus = sendPayload(testStruct, TransmitData, counter);
+		HAL_Delay(1000);
+		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
+
+		if (getStatusFullTxFIFO(testStruct)) {	//clean tx fifo if full
+			flushTx(testStruct);
+		}
+#endif
 #if TEST_TRANSMIT
 		rxFifoStatus = getRxStatusFIFO(testStruct);
 		txFifoStatus = getTxStatusFIFO(testStruct);
