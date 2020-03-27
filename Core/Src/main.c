@@ -39,7 +39,7 @@
 #define TEST_TRANSMIT 0
 
 #define TAB_SIZE 5
-#define BUF_SIZE 10
+#define BUF_SIZE 32
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -136,35 +136,33 @@ int main(void)
 	/* 1.3 Enable/disable interrupts */
 	enableRXinterrupt(testStruct);
 	enableTXinterrupt(testStruct);
-	regTmp = readReg(testStruct, CONFIG); 		// read value of CONFIG register
 	/* 2. Set ACK for RX pipe  */
 	enableAutoAckPipe(testStruct, 0);
-	regTmp = readReg(testStruct, EN_AA);
 	/* 3. Set RX pipe */
 	enableRxAddr(testStruct, 0);
-	regTmp = readReg(testStruct, EN_RXADDR);
+
 	/* 4. Set RX/TX address width */
 	setAddrWidth(testStruct, longWidth);
-	regTmp = readReg(testStruct, SETUP_AW);
+
 	/* 5. Set ARD and ARC */
 	setAutoRetrCount(testStruct, 4);
 	setAutoRetrDelay(testStruct, 3); //500us
-	regTmp = readReg(testStruct, SETUP_RETR);
+
 	/* 6. Set RF channel */
 	setChannel(testStruct, 2);
-	regTmp = readReg(testStruct, RF_CH);
+
 	/* 7. Set RF power and Data Rate */
 	setRFpower(testStruct, RF_PWR_0dBm);
 	setDataRate(testStruct, RF_DataRate_250);
-	regTmp = readReg(testStruct, RF_SETUP);
+
 	/* 8 Set RX address */
 	setReceivePipeAddress(testStruct, 0, ReceiveAddress,
 			sizeof(ReceiveAddress));
-	readRegExt(testStruct, RX_ADDR_P0, ReceiveData, 5);
+
 	/* 9. Set TX address */
 	setTransmitPipeAddress(testStruct, TransmitAddress,
 			sizeof(TransmitAddress));
-	readRegExt(testStruct, TX_ADDR, ReceiveData, 5);
+
 #if TEST_STATIC_LENGTH
 	setRxPayloadWidth(testStruct, 0, BUF_SIZE);
 	regTmp = readReg(testStruct, RX_PW_P0);
@@ -198,9 +196,11 @@ int main(void)
 		HAL_Delay(999);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
 		sendStatus = sendPayload(testStruct, TransmitData, counter);
+		txFifoStatus = getTX_DS(testStruct);
 		HAL_Delay(1000);
+		txFifoStatus = getTX_DS(testStruct);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
-
+		txFifoStatus = getTX_DS(testStruct);
 		if (getStatusFullTxFIFO(testStruct)) {	//clean tx fifo if full
 			flushTx(testStruct);
 		}
