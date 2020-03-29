@@ -34,7 +34,7 @@
 #define TEST_CONFIG 1
 #define TEST_STATIC_LENGTH 1
 #define TEST_DYNAMIC_LENGTH 1
-#define	TEST_ACK_PAYLOAD 0
+#define	TEST_ACK_PAYLOAD 1
 
 #define TEST_TRANSMIT 0
 
@@ -57,6 +57,7 @@
 uint32_t sendStatus = 0;
 uint32_t regTmp = 0;
 uint8_t counter = 0;
+uint8_t j;
 
 static uint8_t rxPayloadWidthPipe0 = 0;
 uint8_t rxFifoStatus = 0;
@@ -87,10 +88,6 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	uint8_t j;
-	for (j = 0; j < BUF_SIZE; j++) {
-		TransmitData[j] = 'A' + j;
-	}
   /* USER CODE END 1 */
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -146,7 +143,7 @@ int main(void)
 
 	/* 5. Set ARD and ARC */
 	setAutoRetrCount(testStruct, 4);
-	setAutoRetrDelay(testStruct, 3); //500us
+	setAutoRetrDelay(testStruct, 5); //500us
 
 	/* 6. Set RF channel */
 	setChannel(testStruct, 2);
@@ -192,15 +189,22 @@ int main(void)
 		}
 		TransmitData[counter + 1] = counter + 48;	//write counter
 		counter++;
+		//	txFifoStatus = getTX_DS(testStruct);
+		HAL_Delay(500);
 
-		HAL_Delay(999);
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
-		sendStatus = sendPayload(testStruct, TransmitData, counter);
-		txFifoStatus = getTX_DS(testStruct);
 		HAL_Delay(1000);
-		txFifoStatus = getTX_DS(testStruct);
+		sendStatus = sendPayload(testStruct, TransmitData, counter);
+#if TEST_ACK_PAYLOAD
+		if (checkReceivedPayload(testStruct, pipe0) == 1) {
+			rxPayloadWidthPipe0 = readDynamicPayloadWidth(testStruct);
+			readRxPayload(testStruct, ReceiveData, rxPayloadWidthPipe0);
+		}
+#endif
 		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
-		txFifoStatus = getTX_DS(testStruct);
+		clearRX_DR(testStruct);
+		clearTX_DS(testStruct);
+		//txFifoStatus = getTX_DS(testStruct);
 		if (getStatusFullTxFIFO(testStruct)) {	//clean tx fifo if full
 			flushTx(testStruct);
 		}
