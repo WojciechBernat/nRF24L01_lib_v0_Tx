@@ -57,6 +57,7 @@
 uint32_t sendStatus = 0;
 uint32_t regTmp = 0;
 uint8_t counter = 0;
+uint8_t pipe0 = 0;
 uint8_t j;
 
 static uint8_t rxPayloadWidthPipe0 = 0;
@@ -188,7 +189,6 @@ int main(void)
 			TransmitData[j] = 'A' + j;
 		}
 		TransmitData[counter + 1] = counter + 48;	//write counter
-		counter++;
 		//	txFifoStatus = getTX_DS(testStruct);
 		HAL_Delay(500);
 
@@ -208,6 +208,7 @@ int main(void)
 		if (getStatusFullTxFIFO(testStruct)) {	//clean tx fifo if full
 			flushTx(testStruct);
 		}
+		counter++;
 #endif
 #if TEST_TRANSMIT
 		rxFifoStatus = getRxStatusFIFO(testStruct);
